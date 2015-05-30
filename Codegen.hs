@@ -22,7 +22,7 @@ instance ToC CStmt where
         toC ty ++ " " ++
         name ++ " = " ++ toC val ++
         ";\n"
-    toC (CDefData   _ _) = error "toC CDefData   not implemented"
+    toC (CDefData cdata) = toC cdata
     toC (CRawStmt s)     = s
 
 instance ToC Param where
@@ -61,10 +61,12 @@ instance ToC Type where
     toC (ScalarTy s)  = toC s
     toC (PtrTy ty)    = toC ty ++ "*"
     toC (ArrayTy ty)  = toC ty ++ "[]"
-    toC (DataTy n)    = n
     toC (ArrowTy _ _) = "void*"
     toC (IOTy a)      = toC a
+    toC TypeTy        = "void*"
     toC UnknownTy     = "void*"
+    toC (StructTy n)  = "struct " ++ n
+    toC (UnionTy  n)  = "union " ++ n
 
 instance ToC ScalarType where
     toC VoidTy       = "void"
@@ -75,6 +77,18 @@ instance ToC ScalarType where
     toC DoubleTy     = "double"
     toC (Unsigned t) = "unsigned " ++ toC t
     toC (Long t)     = "long " ++ toC t
+
+instance ToC CData where
+    toC (CStruct n fields) =
+        "struct " ++ n ++ " {\n" ++
+        concatMap fieldToC fields ++
+        "};\n"
+      where
+        fieldToC (fn, tyF) = toC tyF ++ " " ++ fn ++ ";\n"
+    toC (CUnion n xs) =
+        "union " ++ n ++ " {\n" ++
+        concatMap ((++";\n") . toC) xs ++
+        "};\n"
 
 -- TESTING --
 

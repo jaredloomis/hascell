@@ -14,7 +14,36 @@ data CExpr =
 
 data CStmt =
     CDefFun Name [Param] Type CExpr
-  | CDefData Name Data
+  | CDefData CData
   | CDefGlobal Name Type CExpr
   | CRawStmt String
   deriving (Show, Eq)
+
+data CData =
+    CStruct Name [(Name, Type)]
+  | CUnion  Name [Type]
+--  | CUnion  Name [CData]
+  deriving (Show, Eq)
+
+{-
+
+data X = MkX (xi :: Int) | MkY (yi :: Int)
+
+||||||
+||||||
+vvvvvv
+
+struct MkX {
+    int xi;
+};
+
+struct MkY {
+    int yi;
+};
+
+enum X {
+    struct MkX;
+    struct MkY;
+};
+
+-}

@@ -1,9 +1,10 @@
 module Elab where
 
 import Data.List (find)
-import Data.Monoid
+import Data.Monoid hiding (Product, Sum)
 import Control.Monad.State
 import Control.Arrow
+import Data.Foldable (foldlM)
 
 import qualified Data.Map as M
 
@@ -46,8 +47,8 @@ collectCtx ctx xs = mapM_ regStmt xs
         addGlobal n tyE
     regStmt (DefForeign n ty) =
         addGlobal n ty
-    regStmt (DefData n d) =
-        addStmt $ CDefData n d
+    regStmt (DefData n _) =
+        addGlobal n TypeTy
     regStmt _ = return ()
 
     typeOf' :: Ctx -> Expr -> ElabM Type
@@ -71,12 +72,27 @@ collectCtx ctx xs = mapM_ regStmt xs
         checkName _                             = False
 
 elabStmt :: Ctx -> Stmt -> ElabM ()
-elabStmt ctx (DefExpr n e _) =
---    ctx' <- (ctx <>) <$> gets elabCtx
-    defFun ctx n e
+elabStmt ctx (DefExpr n e _)  = defFun ctx n e
 elabStmt _   (DefForeign _ _) = return ()
-elabStmt _   (DefData    _ _) = error "elabStmt DefData not implemented"
+elabStmt _   (DefData    n d) = elabData n d
 elabStmt _   (RawStmt    s)   = addStmt $ CRawStmt s
+
+elabData :: Name -> Data -> ElabM ()
+elabData _ (Product n fs) = --return $ CStruct n fs
+    addStmt . CDefData $ CStruct n fs
+elabData n (Sum xs)       = do -- CUnion n <$> mapM (elabData $ n ++ "_0") xs
+    -- Elab fields
+    _ <- foldlM elab' 0 xs
+
+    -- Represent fields as 'struct n;'
+    addStmt . CDefData . CUnion n $ map asType xs
+  where
+    asType :: Data -> Type
+    asType (Product pn _) = StructTy pn
+    asType (Sum _) = error "elabData.fieldName recieved Sum"
+
+    elab' :: Int -> Data -> ElabM Int
+    elab' i x = elabData (n ++ "_" ++ show i) x >> return (i+1)
 
 elabExpr :: Ctx -> Expr -> ElabM CExpr
 elabExpr ctx e@Lam{} = do

@@ -12,13 +12,15 @@ type Ctx   = M.Map Name Type
 
 data Type =
     ScalarTy ScalarType
-  | PtrTy Type
-  | ArrayTy Type
-  | DataTy Name
-  | ArrowTy Type Type
-  | IOTy Type
+  | PtrTy    Type
+  | ArrayTy  Type
+
+  | ArrowTy  Type Type
+  | IOTy     Type
+  | TypeTy
   | UnknownTy
---  | AnyTy
+  | StructTy Name
+  | UnionTy  Name
   deriving (Show, Eq)
 
 data ScalarType =
@@ -65,7 +67,7 @@ data Stmt =
 
 data Data =
     -- 'Pair' type
-    Product Name [Type]
+    Product Name [(Name, Type)]
     -- 'Either' type
   | Sum [Data]
   deriving (Show, Eq)

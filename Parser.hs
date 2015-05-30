@@ -26,12 +26,33 @@ iparse p n s = runIdentity .
 -----------------
 
 parseStmt :: IParser Stmt
-parseStmt = try foreignStmt <|> typedVal
+parseStmt = try foreignStmt <|> try dataStmt <|> typedVal
 
 foreignStmt :: IParser Stmt
 foreignStmt = do
     lexeme (reserved "foreign")
     uncurry DefForeign <$> lexeme typedIdent
+
+dataStmt :: IParser Stmt
+dataStmt = uncurry DefData <$> parseData
+
+parseData :: IParser (Name, Data)
+parseData = do
+    lexeme $ reserved "data"
+    tyName <- lexeme identifier
+    lexeme $ reservedOp "="
+
+    dataCons <- lexeme parseDataCon `sepBy`
+                lexeme (reservedOp "|")
+    return (tyName, Sum dataCons)
+
+parseDataCon :: IParser Data
+parseDataCon = do
+    conName <- lexeme identifier
+
+    fields <- many . parens . lexeme $ typedIdent
+
+    return $ Product conName fields
 
 typedVal :: IParser Stmt
 typedVal = do
@@ -133,8 +154,8 @@ primVar = do
 tokenParser :: Tok.GenTokenParser String a (State SourcePos)
 tokenParser =
     let tp = emptyDef {
-        Tok.reservedOpNames = ["=", "\\", "->", "::"],
-        Tok.reservedNames   = ["foreign", "IO"],
+        Tok.reservedOpNames = ["=", "\\", "->", "::", "|"],
+        Tok.reservedNames   = ["foreign", "IO", "data"],
 
         Tok.commentStart    = "{-",
         Tok.commentEnd      = "-}",
